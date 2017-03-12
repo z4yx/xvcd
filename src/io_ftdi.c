@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <ftdi.h>
+#include <libftdi1/ftdi.h>
 #include <string.h>
 
 #include "io_ftdi.h"
@@ -80,6 +80,7 @@ int io_scan(const unsigned char *TMS, const unsigned char *TDI, unsigned char *T
 {
 	unsigned char buffer[2*16384];
 	int i, res; 
+	struct ftdi_transfer_control* async_res;
 #ifndef USE_ASYNC
 #error no async
 	int r, t;
@@ -138,10 +139,10 @@ int io_scan(const unsigned char *TMS, const unsigned char *TDI, unsigned char *T
 		r += t;
 	}
 #else
-	res = ftdi_write_data_async(&ftdi, buffer, bits * 2);
-	if (res < 0)
+	async_res = ftdi_write_data_submit(&ftdi, buffer, bits * 2);
+	if (async_res == NULL)
 	{
-		fprintf(stderr, "ftdi_write_data_async %d (%s)\n", res, ftdi_get_error_string(&ftdi));
+		fprintf(stderr, "ftdi_write_data_submit %p (%s)\n", async_res,  ftdi_get_error_string(&ftdi));
 		return -1;
 	}
 
@@ -170,6 +171,7 @@ int io_scan(const unsigned char *TMS, const unsigned char *TDI, unsigned char *T
 			TDO[i/8] |= 1 << (i&7);
 		}
 	}
+	ftdi_transfer_data_done(async_res);
 
 	return 0;
 }
