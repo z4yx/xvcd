@@ -90,8 +90,42 @@ int handle_data(int fd)
 		
 		if (sread(fd, cmd, 6) != 1)
 			return 1;
-		
-		if (memcmp(cmd, "shift:", 6))
+
+		if (memcmp(cmd, "getinfo:", 6) == 0)
+		{
+			if (sread(fd, cmd, 2) != 1)
+				return 1;
+			sprintf((char*)result, "xvcServer_v1.0:%lu\n", sizeof(buffer));
+			size_t nr_bytes = strlen((char*)result);
+			if (write(fd, result, nr_bytes) != nr_bytes)
+			{
+				perror("write");
+				return 1;
+			}
+			if (verbose)
+			{
+				printf("getinfo, replied with %s\n", result);
+			}
+			continue;
+		}
+		else if(memcmp(cmd, "settck:", 6) == 0)
+		{
+			if (sread(fd, cmd, 5) != 1)
+				return 1;
+			size_t nr_bytes = 4;
+			memcpy(result, cmd+1, nr_bytes);
+			if (write(fd, result, nr_bytes) != nr_bytes)
+			{
+				perror("write");
+				return 1;
+			}
+			if (verbose)
+			{
+				printf("settck: %08x\n", *(int*)result);
+			}
+			continue;
+		}
+		else if (memcmp(cmd, "shift:", 6))
 		{
 			cmd[6] = 0;
 			fprintf(stderr, "invalid cmd '%s'\n", cmd);
@@ -103,6 +137,11 @@ int handle_data(int fd)
 		{
 			fprintf(stderr, "reading length failed\n");
 			return 1;
+		}
+
+		if(verbose)
+		{
+			printf("shift %d ", len);
 		}
 		
 		int nr_bytes = (len + 7) / 8;
